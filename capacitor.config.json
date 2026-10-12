@@ -1,0 +1,10 @@
+{
+  "appId": "app.kuranikerim",
+  "appName": "Kur’an-ı Kerim",
+  "webDir": "www",
+  "plugins": {
+    "LocalNotifications": {
+      "iconColor": "#1D4A35"
+    }
+  }
+}
