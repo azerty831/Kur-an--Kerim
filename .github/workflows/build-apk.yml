@@ -1,0 +1,87 @@
+name: Construire l'APK Android
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Préparer les fichiers de l'app
+        run: |
+          mkdir -p www assets
+          cp index.html manifest.json icon-192.png icon-512.png www/
+          cp app-icon.png assets/icon-only.png
+          cp app-icon-fg.png assets/icon-foreground.png
+          cp app-icon-bg.png assets/icon-background.png
+          cp app-splash.png assets/splash.png
+          cp app-splash.png assets/splash-dark.png
+
+      - name: Installer Capacitor
+        run: npm install
+
+      - name: Créer le projet Android
+        run: |
+          npx cap add android
+          npx @capacitor/assets generate --android || echo "Icônes : étape ignorée"
+
+      - name: Réglages Android (permissions)
+        run: |
+          python3 - <<'PY'
+          import re
+          p = 'android/app/src/main/AndroidManifest.xml'
+          s = open(p, encoding='utf-8').read()
+          perms = ['POST_NOTIFICATIONS', 'SCHEDULE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED',
+                   'RECORD_AUDIO', 'MODIFY_AUDIO_SETTINGS', 'ACCESS_FINE_LOCATION', 'ACCESS_COARSE_LOCATION']
+          add = ''.join('    <uses-permission android:name="android.permission.%s" />\n' % x
+                        for x in perms if ('android.permission.%s"' % x) not in s)
+          s = s.replace('</manifest>', add + '</manifest>')
+          open(p, 'w', encoding='utf-8').write(s)
+          v = 'android/variables.gradle'
+          t = open(v, encoding='utf-8').read()
+          t = re.sub(r'targetSdkVersion\s*=\s*\d+', 'targetSdkVersion = 34', t)
+          open(v, 'w', encoding='utf-8').write(t)
+          PY
+          npx cap sync android
+
+      - name: Utiliser toujours la même clé de signature (pour que les mises à jour s'installent par-dessus)
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
+      - name: Construire l'APK
+        working-directory: android
+        run: ./gradlew assembleDebug --no-daemon
+
+      - name: Nommer le fichier
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk Kuran-i-Kerim.apk
+
+      - name: Garder l'APK (onglet Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Kuran-i-Kerim-apk
+          path: Kuran-i-Kerim.apk
+
+      - name: Publier l'APK (lien à télécharger)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: apk-${{ github.run_number }}
+          name: "Kur'an-ı Kerim (version ${{ github.run_number }})"
+          files: Kuran-i-Kerim.apk
