@@ -59,6 +59,21 @@ jobs:
           t = open(v, encoding='utf-8').read()
           t = re.sub(r'targetSdkVersion\s*=\s*\d+', 'targetSdkVersion = 34', t)
           open(v, 'w', encoding='utf-8').write(t)
+          # écran de démarrage Android : même fond que l'icône et logo rond bien centré
+          import os, shutil
+          os.makedirs('android/app/src/main/res/drawable-xxxhdpi', exist_ok=True)
+          shutil.copy('app-splash-icon.png', 'android/app/src/main/res/drawable-xxxhdpi/splash_icon.png')
+          sp = 'android/app/src/main/res/values/styles.xml'
+          x = open(sp, encoding='utf-8').read()
+          m = re.search(r'(<style name="AppTheme\.NoActionBarLaunch"[^>]*>)(.*?)(</style>)', x, re.S)
+          if m and 'Theme.SplashScreen' in m.group(1):
+              body = re.sub(r'\s*<item name="windowSplashScreen(Background|AnimatedIcon)">.*?</item>', '', m.group(2))
+              body += '\n        <item name="windowSplashScreenBackground">#F6F9F7</item>\n        <item name="windowSplashScreenAnimatedIcon">@drawable/splash_icon</item>\n    '
+              x = x[:m.start()] + m.group(1) + body + m.group(3) + x[m.end():]
+              open(sp, 'w', encoding='utf-8').write(x)
+              print('splash: styles.xml mis a jour')
+          else:
+              print('splash: theme inattendu, etape ignoree')
           PY
           npx cap sync android
 
