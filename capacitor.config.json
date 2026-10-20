@@ -6,5 +6,12 @@
     "LocalNotifications": {
       "iconColor": "#1D4A35"
     }
+  },
+  "server": {
+    "url": "https://azerty831.github.io/Kur-an--Kerim/",
+    "cleartext": false,
+    "allowNavigation": [
+      "azerty831.github.io"
+    ]
   }
 }
